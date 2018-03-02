@@ -1,5 +1,6 @@
 package org.mdkt.compiler;
 
+import java.io.File;
 import java.util.*;
 
 import javax.tools.*;
@@ -14,6 +15,7 @@ public class InMemoryJavaCompiler {
 	boolean ignoreWarnings = false;
 
 	private Map<String, SourceCode> sourceCodes = new HashMap<String, SourceCode>();
+	private String location;
 
 	public static InMemoryJavaCompiler newInstance() {
 		return new InMemoryJavaCompiler();
@@ -47,6 +49,11 @@ public class InMemoryJavaCompiler {
 		return this;
 	}
 
+	public InMemoryJavaCompiler addLocation(String location) {
+		this.location = location;
+		return this;
+	}
+
 	/**
 	 * Ignore non-critical compiler output, like unchecked/unsafe operation
 	 * warnings.
@@ -77,7 +84,15 @@ public class InMemoryJavaCompiler {
 			code[i] = new CompiledCode(iter.next().getClassName());
 		}
 		DiagnosticCollector<JavaFileObject> collector = new DiagnosticCollector<>();
-		ExtendedStandardJavaFileManager fileManager = new ExtendedStandardJavaFileManager(javac.getStandardFileManager(null, null, null), classLoader);
+		StandardJavaFileManager standardFileManager = javac.getStandardFileManager(null, null, null);
+		if(location != null) {
+			standardFileManager.setLocation(
+					StandardLocation.CLASS_PATH,
+					Arrays.asList(new File(location))
+			);
+		}
+		
+		ExtendedStandardJavaFileManager fileManager = new ExtendedStandardJavaFileManager(standardFileManager, classLoader);
 		JavaCompiler.CompilationTask task = javac.getTask(null, fileManager, collector, options, null, compilationUnits);
 		boolean result = task.call();
 		if (!result || collector.getDiagnostics().size() > 0) {
